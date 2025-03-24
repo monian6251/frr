@@ -81,6 +81,8 @@ int str2family(const char *string)
 		return AF_ETHERNET;
 	else if (!strcmp("evpn", string))
 		return AF_EVPN;
+	else if (!strcmp("link-state", string))
+		return AF_BGPLS;
 	return -1;
 }
 
@@ -95,6 +97,8 @@ const char *family2str(int family)
 		return "Ethernet";
 	case AF_EVPN:
 		return "Evpn";
+	case AF_BGPLS:
+        return "link-state";
 	}
 	return "?";
 }
@@ -108,6 +112,8 @@ int afi2family(afi_t afi)
 		return AF_INET6;
 	else if (afi == AFI_L2VPN)
 		return AF_ETHERNET;
+	else if (afi == AFI_BGPLS)
+		return AF_BGPLS;
 	/* NOTE: EVPN code should NOT use this interface. */
 	return 0;
 }
@@ -120,6 +126,8 @@ afi_t family2afi(int family)
 		return AFI_IP6;
 	else if (family == AF_ETHERNET || family == AF_EVPN)
 		return AFI_L2VPN;
+	else if (family == AF_BGPLS)
+		return AFI_BGPLS;
 	return 0;
 }
 
@@ -132,6 +140,8 @@ const char *afi2str_lower(afi_t afi)
 		return "ipv6";
 	case AFI_L2VPN:
 		return "l2vpn";
+	case AFI_BGPLS:
+		return "linkstate";
 	case AFI_MAX:
 	case AFI_UNSPEC:
 		return "bad-value";
@@ -149,6 +159,8 @@ const char *afi2str(afi_t afi)
 		return "IPv6";
 	case AFI_L2VPN:
 		return "l2vpn";
+	case AFI_BGPLS:
+        return "link-state";
 	case AFI_MAX:
 	case AFI_UNSPEC:
 		return "bad-value";
@@ -170,6 +182,12 @@ const char *safi2str(safi_t safi)
 		return "encap";
 	case SAFI_EVPN:
 		return "evpn";
+	case SAFI_SR_POLICY:
+		return "sr-policy";
+    case SAFI_BGP_LS:
+        return "link-state";
+    case SAFI_BGP_LS_VPN:
+        return "link-state-vpn";
 	case SAFI_LABELED_UNICAST:
 		return "labeled-unicast";
 	case SAFI_FLOWSPEC:

@@ -236,6 +236,9 @@ struct attr {
 	/* Unknown transitive attribute. */
 	struct transit *transit;
 
+	/* link state path attribute. */
+	struct bgp_ls_attr *ls_attr;
+
 	struct in_addr mp_nexthop_global_in;
 
 	/* Aggregator Router ID attribute */

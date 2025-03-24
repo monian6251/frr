@@ -41,6 +41,7 @@
 #include "bgp_evpn.h"
 #include "bgp_flowspec_private.h"
 #include "bgp_mac.h"
+#include "bgp_ls.h"
 
 /* Attribute strings for logging. */
 static const struct message attr_str[] = {
@@ -65,6 +66,7 @@ static const struct message attr_str[] = {
 #ifdef ENABLE_BGP_VNC_ATTR
 	{BGP_ATTR_VNC, "VNC"},
 #endif
+	{BGP_ATTR_LINK_STATE_PATH, "LINK_STATE"},
 	{BGP_ATTR_LARGE_COMMUNITIES, "LARGE_COMMUNITY"},
 	{BGP_ATTR_PREFIX_SID, "PREFIX_SID"},
 	{BGP_ATTR_IPV6_EXT_COMMUNITIES, "IPV6_EXT_COMMUNITIES"},
@@ -1323,6 +1325,9 @@ void bgp_attr_unintern_sub(struct attr *attr)
 
 	srv6_l3vpn_unintern(&attr->srv6_l3vpn);
 	srv6_vpn_unintern(&attr->srv6_vpn);
+	if(attr->ls_attr){
+		bgp_ls_free_attr_all(attr->ls_attr); 	   	      
+	 }
 
 	bre = bgp_attr_get_evpn_overlay(attr);
 	evpn_overlay_unintern(&bre);
@@ -2759,6 +2764,34 @@ ipv6_ext_community_ignore:
 	return bgp_attr_ignore(peer, args->type);
 }
 
+/* Parse BGP-LS path attribute */
+static int bgp_attr_bgpls(struct bgp_attr_parser_args *args)
+{
+    enum bgp_attr_parse_ret ret = BGP_ATTR_PARSE_PROCEED;
+	struct attr *const attr = args->attr;
+	const bgp_size_t length = args->length;
+
+	/* Verify that the receiver is expecting "ingress replication" as we
+	 * can only support that.
+	 */
+	if (length < 4) {
+		flog_err(EC_BGP_ATTR_LEN, "Bad path attribute length %d",
+			 length);
+		return bgp_attr_malformed(args, BGP_NOTIFY_UPDATE_ATTR_LENG_ERR,
+					  args->total);
+	}
+    ret = bgp_ls_attr_deserialize(args);
+	if (BGP_ATTR_PARSE_PROCEED != ret) {
+		flog_err(EC_BGP_ATTRIBUTE_PARSE_ERROR, "Bad BGP LS attribute");
+		return bgp_attr_malformed(args, BGP_NOTIFY_UPDATE_OPT_ATTR_ERR,
+					  args->total);
+	}
+
+	attr->flag |= ATTR_FLAG_BIT(BGP_ATTR_LINK_STATE_PATH);
+	return BGP_ATTR_PARSE_PROCEED;
+
+}
+
 /* Parse Tunnel Encap attribute in an UPDATE */
 static int bgp_attr_encap(struct bgp_attr_parser_args *args)
 {
@@ -3887,6 +3920,9 @@ enum bgp_attr_parse_ret bgp_attr_parse(struct peer *peer, struct attr *attr,
 			break;
 		case BGP_ATTR_EXT_COMMUNITIES:
 			ret = bgp_attr_ext_communities(&attr_args);
+			break;
+		case BGP_ATTR_LINK_STATE_PATH:
+			ret = bgp_attr_bgpls(&attr_args);
 			break;
 #ifdef ENABLE_BGP_VNC_ATTR
 		case BGP_ATTR_VNC:

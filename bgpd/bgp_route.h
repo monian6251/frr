@@ -39,6 +39,8 @@ enum bgp_show_type {
 	bgp_show_type_lcommunity_exact,
 	bgp_show_type_lcommunity_list,
 	bgp_show_type_lcommunity_list_exact,
+	bgp_show_type_ls_neighbor,
+    bgp_show_type_ls_local,
 	bgp_show_type_flap_statistics,
 	bgp_show_type_flap_neighbor,
 	bgp_show_type_dampend_paths,
@@ -92,6 +94,12 @@ enum bgp_show_adj_route_type {
 #define BGP_NLRI_PARSE_ERROR_FLOWSPEC_BAD_FORMAT -13
 #define BGP_NLRI_PARSE_ERROR_ADDRESS_FAMILY -14
 #define BGP_NLRI_PARSE_ERROR_EVPN_TYPE1_SIZE -15
+#define BGP_NLRI_PARSE_ERROR_LS_NOT_SUPPORTED -16
+#define BGP_NLRI_PARSE_ERROR_LS_LENGTH -17
+#define BGP_NLRI_PARSE_ERROR_LS_NODE -18
+#define BGP_NLRI_PARSE_ERROR_LS_LINK -19
+#define BGP_NLRI_PARSE_ERROR_LS_IP4P -20
+#define BGP_NLRI_PARSE_ERROR_LS_IP6P -21
 #define BGP_NLRI_PARSE_ERROR -32
 
 /* 1. local MAC-IP/type-2 paths in the VNI routing table are linked to the

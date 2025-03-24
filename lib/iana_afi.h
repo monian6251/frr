@@ -26,6 +26,9 @@ typedef enum {
 	IANA_AFI_IPV4 = 1,
 	IANA_AFI_IPV6 = 2,
 	IANA_AFI_L2VPN = 25,
+	IANA_AFI_BGPLS = 16388,
+	IANA_AFI_IPMR = 128,
+	IANA_AFI_IP6MR = 129
 } iana_afi_t;
 
 typedef enum {
@@ -35,6 +38,9 @@ typedef enum {
 	IANA_SAFI_LABELED_UNICAST = 4,
 	IANA_SAFI_ENCAP = 7,
 	IANA_SAFI_EVPN = 70,
+	IANA_SAFI_BGP_LS = 71,
+	IANA_SAFI_BGP_LS_VPN = 72,
+	IANA_SAFI_SR_POLICY = 73,
 	IANA_SAFI_MPLS_VPN = 128,
 	IANA_SAFI_FLOWSPEC = 133
 } iana_safi_t;
@@ -48,6 +54,8 @@ static inline afi_t afi_iana2int(iana_afi_t afi)
 		return AFI_IP6;
 	case IANA_AFI_L2VPN:
 		return AFI_L2VPN;
+	case IANA_AFI_BGPLS:
+        return AFI_BGPLS;
 	case IANA_AFI_RESERVED:
 		return AFI_MAX;
 	}
@@ -64,6 +72,8 @@ static inline iana_afi_t afi_int2iana(afi_t afi)
 		return IANA_AFI_IPV6;
 	case AFI_L2VPN:
 		return IANA_AFI_L2VPN;
+	case AFI_BGPLS:
+        return IANA_AFI_BGPLS;
 	case AFI_UNSPEC:
 	case AFI_MAX:
 		return IANA_AFI_RESERVED;
@@ -90,6 +100,12 @@ static inline safi_t safi_iana2int(iana_safi_t safi)
 		return SAFI_ENCAP;
 	case IANA_SAFI_EVPN:
 		return SAFI_EVPN;
+	case IANA_SAFI_SR_POLICY:
+		return SAFI_SR_POLICY;
+    case IANA_SAFI_BGP_LS:
+        return SAFI_BGP_LS;
+    case IANA_SAFI_BGP_LS_VPN:
+        return SAFI_BGP_LS_VPN;
 	case IANA_SAFI_LABELED_UNICAST:
 		return SAFI_LABELED_UNICAST;
 	case IANA_SAFI_FLOWSPEC:
@@ -114,6 +130,12 @@ static inline iana_safi_t safi_int2iana(safi_t safi)
 		return IANA_SAFI_ENCAP;
 	case SAFI_EVPN:
 		return IANA_SAFI_EVPN;
+	case SAFI_SR_POLICY:
+		return IANA_SAFI_SR_POLICY;
+    case SAFI_BGP_LS:
+        return IANA_SAFI_BGP_LS;
+    case SAFI_BGP_LS_VPN:
+        return IANA_SAFI_BGP_LS_VPN;
 	case SAFI_LABELED_UNICAST:
 		return IANA_SAFI_LABELED_UNICAST;
 	case SAFI_FLOWSPEC:

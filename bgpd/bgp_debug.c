@@ -35,6 +35,7 @@
 #include "bgpd/bgp_vty.h"
 #include "bgpd/bgp_flowspec.h"
 #include "bgpd/bgp_packet.h"
+#include "bgpd/bgp_ls_vty.h"
 
 #include "bgpd/bgp_debug_clippy.c"
 
@@ -54,6 +55,7 @@ unsigned long conf_bgp_debug_nht;
 unsigned long conf_bgp_debug_update_groups;
 unsigned long conf_bgp_debug_vpn;
 unsigned long conf_bgp_debug_flowspec;
+unsigned long conf_bgp_debug_link_state;
 unsigned long conf_bgp_debug_labelpool;
 unsigned long conf_bgp_debug_pbr;
 unsigned long conf_bgp_debug_graceful_restart;
@@ -75,6 +77,7 @@ unsigned long term_bgp_debug_nht;
 unsigned long term_bgp_debug_update_groups;
 unsigned long term_bgp_debug_vpn;
 unsigned long term_bgp_debug_flowspec;
+unsigned long term_bgp_debug_link_state;
 unsigned long term_bgp_debug_labelpool;
 unsigned long term_bgp_debug_pbr;
 unsigned long term_bgp_debug_graceful_restart;
@@ -495,6 +498,11 @@ bool bgp_dump_attr(struct attr *attr, char *buf, size_t size)
 		if (attr->label_index != BGP_INVALID_LABEL_INDEX)
 			snprintf(buf + strlen(buf), size - strlen(buf),
 				 ", label-index %u", attr->label_index);
+	}
+
+	if (CHECK_FLAG(attr->flag, ATTR_FLAG_BIT(BGP_ATTR_LINK_STATE_PATH)))
+	{
+		snprintf(buf + strlen(buf), size - strlen(buf), ", include link-state");
 	}
 
 	if (strlen(buf) > 1)
@@ -2149,6 +2157,41 @@ DEFPY (debug_bgp_evpn_mh,
 	return CMD_SUCCESS;
 }
 
+DEFUN (debug_bgp_ls,
+	debug_bgp_ls_cmd,
+	"debug bgp link-state",
+	DEBUG_STR
+	BGP_STR
+	"BGP allow link-state debugging entries\n")
+{
+ if (vty->node == CONFIG_NODE)
+	 DEBUG_ON(link_state,BGPLS);
+ else
+ {
+	 TERM_DEBUG_ON(link_state,BGPLS);
+	 vty_out(vty, "BGP link-state debugging is on\n");
+ }
+ return CMD_SUCCESS;
+}
+
+DEFUN (no_debug_bgp_ls,
+	no_debug_bgp_ls_cmd,
+	"no debug bgp link-state",
+	NO_STR
+	DEBUG_STR
+	BGP_STR
+	"BGP allow link-state debugging entries\n")
+{
+ if (vty->node == CONFIG_NODE)
+	 DEBUG_OFF(link_state,BGPLS);
+ else
+ {
+	 TERM_DEBUG_OFF(link_state,BGPLS);
+	 vty_out(vty, "BGP link-state debugging is off\n");
+ }
+ return CMD_SUCCESS;
+}
+
 DEFUN (debug_bgp_labelpool,
        debug_bgp_labelpool_cmd,
        "debug bgp labelpool",
@@ -2279,6 +2322,7 @@ DEFUN (no_debug_bgp,
 	TERM_DEBUG_OFF(vpn, VPN_LEAK_LABEL);
 	TERM_DEBUG_OFF(flowspec, FLOWSPEC);
 	TERM_DEBUG_OFF(labelpool, LABELPOOL);
+	TERM_DEBUG_OFF(link_state,BGPLS);
 	TERM_DEBUG_OFF(pbr, PBR);
 	TERM_DEBUG_OFF(pbr, PBR_ERROR);
 	TERM_DEBUG_OFF(graceful_restart, GRACEFUL_RESTART);
@@ -2365,6 +2409,8 @@ DEFUN_NOSH (show_debugging_bgp,
 		vty_out(vty, "  BGP flowspec debugging is on\n");
 	if (BGP_DEBUG(labelpool, LABELPOOL))
 		vty_out(vty, "  BGP labelpool debugging is on\n");
+	if (BGP_DEBUG(link_state, BGPLS))
+		vty_out(vty, "  BGP link-state debugging is on\n");
 
 	if (BGP_DEBUG(pbr, PBR))
 		vty_out(vty, "  BGP policy based routing debugging is on\n");
@@ -2485,6 +2531,10 @@ static int bgp_config_write_debug(struct vty *vty)
 	}
 	if (CONF_BGP_DEBUG(labelpool, LABELPOOL)) {
 		vty_out(vty, "debug bgp labelpool\n");
+		write++;
+	}
+	if (CONF_BGP_DEBUG(link_state,BGPLS)) {
+		vty_out(vty, "debug bgp link-state\n");
 		write++;
 	}
 
@@ -2678,6 +2728,12 @@ void bgp_debug_init(void)
 	/* debug bgp conditional advertisement */
 	install_element(ENABLE_NODE, &debug_bgp_cond_adv_cmd);
 	install_element(CONFIG_NODE, &debug_bgp_cond_adv_cmd);
+
+	/* debug bgp linkstate */
+	install_element(ENABLE_NODE, &debug_bgp_ls_cmd);
+    install_element(CONFIG_NODE, &debug_bgp_ls_cmd);
+    install_element(ENABLE_NODE, &no_debug_bgp_ls_cmd);
+    install_element(CONFIG_NODE, &no_debug_bgp_ls_cmd);
 }
 
 /* Return true if this prefix is on the per_prefix_list of prefixes to debug

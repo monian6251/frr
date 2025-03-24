@@ -509,6 +509,9 @@ int main(int argc, char **argv)
 	}
 	if (skip_runas)
 		memset(&bgpd_privs, 0, sizeof(bgpd_privs));
+	if (!bgpd_di.config_file) {
+		bgpd_di.config_file = config_default;
+	}
 
 	/* BGP master init. */
 	bgp_master_init(frr_init(), buffer_size, addresses);

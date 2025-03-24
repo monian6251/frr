@@ -50,6 +50,7 @@
 #include "bgpd/bgp_keepalives.h"
 #include "bgpd/bgp_flowspec.h"
 #include "bgpd/bgp_trace.h"
+#include "bgpd/bgp_ls.h"
 
 DEFINE_HOOK(bgp_packet_dump,
 		(struct peer *peer, uint8_t type, bgp_size_t size,
@@ -347,6 +348,9 @@ int bgp_nlri_parse(struct peer *peer, struct attr *attr,
 		return bgp_nlri_parse_evpn(peer, attr, packet, mp_withdraw);
 	case SAFI_FLOWSPEC:
 		return bgp_nlri_parse_flowspec(peer, attr, packet, mp_withdraw);
+	case SAFI_BGP_LS:
+    case SAFI_BGP_LS_VPN:
+        return bgp_nlri_parse_linkstate(peer, attr, packet, mp_withdraw);
 	}
 	return BGP_NLRI_PARSE_ERROR;
 }
@@ -2118,6 +2122,10 @@ static int bgp_open_receive(struct peer_connection *connection,
 			peer->afc[AFI_L2VPN][SAFI_EVPN];
 		peer->afc_nego[AFI_IP6][SAFI_FLOWSPEC] =
 			peer->afc[AFI_IP6][SAFI_FLOWSPEC];
+		peer->afc_nego[AFI_BGPLS][SAFI_BGP_LS] =
+			peer->afc[AFI_BGPLS][SAFI_BGP_LS];
+		peer->afc_nego[AFI_BGPLS][SAFI_BGP_LS_VPN] =
+			peer->afc[AFI_BGPLS][SAFI_BGP_LS_VPN];
 	}
 
 	/* Verify valid local address present based on negotiated

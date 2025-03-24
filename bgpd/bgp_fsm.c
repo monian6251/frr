@@ -42,6 +42,7 @@
 #include "bgpd/bgp_io.h"
 #include "bgpd/bgp_zebra.h"
 #include "bgpd/bgp_vty.h"
+#include "bgpd/bgp_ls.h"
 
 DEFINE_HOOK(peer_backward_transition, (struct peer * peer), (peer));
 DEFINE_HOOK(peer_status_changed, (struct peer * peer), (peer));
@@ -1372,6 +1373,7 @@ enum bgp_fsm_state_progress bgp_stop(struct peer_connection *connection)
 	/* Increment Dropped count. */
 	if (peer_established(connection)) {
 		peer->dropped++;
+		bgp_peer_lsdb_clean(peer);
 
 		if (peer->bfd_config && (peer->last_reset == PEER_DOWN_UPDATE_SOURCE_CHANGE ||
 					 peer->last_reset == PEER_DOWN_MULTIHOP_CHANGE))

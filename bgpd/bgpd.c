@@ -2547,6 +2547,16 @@ int peer_activate(struct peer *peer, afi_t afi, safi_t safi)
 		/* connect to table manager */
 		bgp_zebra_init_tm_connect(bgp);
 	}
+
+	if (SAFI_SR_POLICY == safi && AFI_IP6 == afi) {
+        zlog_debug("peer(s) are now active for srv6-policy, allocate ....");
+		peer->bgp->srv6_peers_num++;
+	}
+	if (SAFI_BGP_LS == safi || SAFI_BGP_LS_VPN == safi) {
+        zlog_debug("peer(s) are now active for %s, allocate ....", safi2str(safi));
+	    bgp->bgpls_peers_num++;
+		bgp_peer_lsdb_init(peer);
+	}
 	return ret;
 }
 
@@ -2642,6 +2652,27 @@ int peer_deactivate(struct peer *peer, afi_t afi, safi_t safi)
 				safi2str(safi));
 		bgp->allocate_mpls_labels[afi][safi_check] = 0;
 		bgp_recalculate_afi_safi_bestpaths(bgp, afi, safi_check);
+	}
+	if (SAFI_SR_POLICY == safi) {
+        zlog_debug("peer(s) are no longer active for srv6-policy, deallocate ....");
+		//srv6 policy peer --, syh add for bgp open, to do: srv6 policy peer delete
+		if (1 >= peer->bgp->srv6_peers_num){
+	        peer->bgp->srv6_peers_num = 0;
+	    }
+	    else{
+	        peer->bgp->srv6_peers_num--;
+	    }
+	}
+
+	if (SAFI_BGP_LS == safi || SAFI_BGP_LS_VPN == safi)	{
+        zlog_debug("peer(s) are no longer active for %s, deallocate ....", safi2str(safi));
+	    if (1 == bgp->bgpls_peers_num) {
+            bgp->bgpls_peers_num = 0;
+        }
+        else {
+            bgp->bgpls_peers_num--;
+        }
+		bgp_peer_lsdb_delete(peer);
 	}
 	return ret;
 }
@@ -3556,6 +3587,8 @@ peer_init:
 	}
 #endif /* ENABLE_BGP_VNC */
 
+	bgp_lsdb_init(bgp);
+
 	for (afi = AFI_IP; afi < AFI_MAX; afi++) {
 		bgp->vpn_policy[afi].bgp = bgp;
 		bgp->vpn_policy[afi].afi = afi;
@@ -4173,6 +4206,7 @@ int bgp_delete(struct bgp *bgp)
 	if (!IS_BGP_INSTANCE_HIDDEN(bgp))
 		bgp_evpn_vrf_delete(bgp);
 
+	bgp_lsdb_exit(bgp);
 	/* unmap bgp vrf label */
 	vpn_leak_zebra_vrf_label_withdraw(bgp, AFI_IP);
 	vpn_leak_zebra_vrf_label_withdraw(bgp, AFI_IP6);
@@ -4743,7 +4777,10 @@ enum bgp_peer_active peer_active(struct peer_connection *connection)
 	    || peer->afc[AFI_IP6][SAFI_MPLS_VPN]
 	    || peer->afc[AFI_IP6][SAFI_ENCAP]
 	    || peer->afc[AFI_IP6][SAFI_FLOWSPEC]
-	    || peer->afc[AFI_L2VPN][SAFI_EVPN])
+		|| peer->afc[AFI_IP6][SAFI_SR_POLICY]
+	    || peer->afc[AFI_L2VPN][SAFI_EVPN]
+		|| peer->afc[AFI_BGPLS][SAFI_BGP_LS]
+		|| peer->afc[AFI_BGPLS][SAFI_BGP_LS_VPN])
 		return BGP_PEER_ACTIVE;
 
 	return BGP_PEER_AF_UNCONFIGURED;
@@ -4764,6 +4801,9 @@ bool peer_active_nego(struct peer *peer)
 	    || peer->afc_nego[AFI_IP6][SAFI_MPLS_VPN]
 	    || peer->afc_nego[AFI_IP6][SAFI_ENCAP]
 	    || peer->afc_nego[AFI_IP6][SAFI_FLOWSPEC]
+		|| peer->afc_nego[AFI_IP6][SAFI_SR_POLICY]
+		|| peer->afc_nego[AFI_BGPLS][SAFI_BGP_LS]
+		|| peer->afc_nego[AFI_BGPLS][SAFI_BGP_LS_VPN]
 	    || peer->afc_nego[AFI_L2VPN][SAFI_EVPN])
 		return true;
 	return false;

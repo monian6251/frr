@@ -74,6 +74,9 @@ bgpd_libbgp_a_SOURCES = \
 	bgpd/bgp_updgrp_packet.c \
 	bgpd/bgp_vpn.c \
 	bgpd/bgp_vty.c \
+	bgpd/bgp_ls.c \
+	bgpd/bgp_ls_vty.c \
+	bgpd/bgp_ls_pub.c \
 	bgpd/bgp_zebra.c \
 	bgpd/bgpd.c \
 	bgpd/bgp_trace.c \
@@ -162,6 +165,9 @@ noinst_HEADERS += \
 	bgpd/bgpd.h \
 	bgpd/bgp_trace.h \
 	bgpd/bgp_nhg.h \
+	bgpd/bgp_ls.h \
+	bgpd/bgp_ls_vty.h \
+	bgpd/bgp_ls_pub.h \
 	\
 	bgpd/rfapi/bgp_rfapi_cfg.h \
 	bgpd/rfapi/rfapi_import.h \

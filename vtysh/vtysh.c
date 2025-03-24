@@ -1447,6 +1447,27 @@ static struct cmd_node bgp_ipv6m_node = {
 	.no_xpath = true,
 };
 
+static struct cmd_node bgp_ipv6_sr_policy_node = {
+	.name = "bgp ipv6 sr-policy",
+	.node = BGP_SRV6_POLICY_NODE,
+	.parent_node = BGP_NODE,
+	.prompt = "%s(config-router-af)# ",
+};
+
+static struct cmd_node bgp_ls_node = {
+    .name = "bgp link-state node",
+    .node = BGP_LS_NODE,
+	.parent_node = BGP_NODE,
+    .prompt = "%s(config-router-af)# ",
+};
+
+static struct cmd_node bgp_ls_vpn_node = {
+    .name = "bgp link-state-vpn node",
+    .node = BGP_LS_VPN_NODE,
+	.parent_node = BGP_NODE,
+    .prompt = "%s(config-router-af)# ",
+};
+
 static struct cmd_node bgp_evpn_node = {
 	.name = "bgp evpn",
 	.node = BGP_EVPN_NODE,
@@ -1902,6 +1923,39 @@ DEFUNSH(VTYSH_BGPD, address_family_ipv6_labeled_unicast,
 	BGP_AF_MODIFIER_STR)
 {
 	vty->node = BGP_IPV6L_NODE;
+	return CMD_SUCCESS;
+}
+
+DEFUNSH(VTYSH_BGPD, address_family_ipv6_sr_policy,
+	address_family_ipv6_sr_policy_cmd,
+	"address-family ipv6 sr-policy",
+	"Enter Address Family command mode\n"
+	"Address Family\n"
+	"Address Family modifier\n")
+{
+	vty->node = BGP_SRV6_POLICY_NODE;
+	return CMD_SUCCESS;
+}
+
+DEFUNSH(VTYSH_BGPD, address_family_linkstate,
+	address_family_linkstate_cmd,
+	"address-family link-state link-state",
+	"Enter Address Family command mode\n"
+	"Address Family\n"
+	"Address Family modifier\n")
+{
+	vty->node = BGP_LS_NODE;
+	return CMD_SUCCESS;
+}
+
+DEFUNSH(VTYSH_BGPD, address_family_linkstate_vpn,
+	address_family_linkstate_vpn_cmd,
+	"address-family link-state link-state-vpn",
+	"Enter Address Family command mode\n"
+	"Address Family\n"
+	"Address Family modifier\n")
+{
+	vty->node = BGP_LS_VPN_NODE;
 	return CMD_SUCCESS;
 }
 
@@ -2582,9 +2636,9 @@ DEFUNSH(VTYSH_BGPD, exit_address_family, exit_address_family_cmd,
 	    || vty->node == BGP_IPV4L_NODE || vty->node == BGP_VPNV4_NODE
 	    || vty->node == BGP_VPNV6_NODE || vty->node == BGP_IPV6_NODE
 	    || vty->node == BGP_IPV6L_NODE || vty->node == BGP_IPV6M_NODE
-	    || vty->node == BGP_EVPN_NODE
-	    || vty->node == BGP_FLOWSPECV4_NODE
-	    || vty->node == BGP_FLOWSPECV6_NODE)
+	    || vty->node == BGP_EVPN_NODE  || vty->node == BGP_LS_NODE
+	    || vty->node == BGP_FLOWSPECV4_NODE || vty->node == BGP_LS_VPN_NODE
+	    || vty->node == BGP_FLOWSPECV6_NODE || vty->node == BGP_SRV6_POLICY_NODE)
 		vty->node = BGP_NODE;
 	return CMD_SUCCESS;
 }
@@ -5050,6 +5104,9 @@ void vtysh_init_vty(void)
 	install_node(&bgp_ipv6_node);
 	install_node(&bgp_ipv6m_node);
 	install_node(&bgp_ipv6l_node);
+	install_node(&bgp_ipv6_sr_policy_node);
+	install_node(&bgp_ls_node);
+	install_node(&bgp_ls_vpn_node);
 	install_node(&bgp_vrf_policy_node);
 	install_node(&bgp_vnc_defaults_node);
 	install_node(&bgp_vnc_nve_group_node);
@@ -5185,6 +5242,16 @@ void vtysh_init_vty(void)
 	install_element(BGP_IPV6L_NODE, &vtysh_quit_bgpd_cmd);
 	install_element(BGP_IPV6L_NODE, &vtysh_end_all_cmd);
 	install_element(BGP_IPV6L_NODE, &exit_address_family_cmd);
+	install_element(BGP_SRV6_POLICY_NODE, &vtysh_end_all_cmd);
+    install_element(BGP_LS_NODE, &vtysh_end_all_cmd);
+    install_element(BGP_LS_VPN_NODE, &vtysh_end_all_cmd);
+	install_element(BGP_NODE, &address_family_ipv6_sr_policy_cmd);
+	install_element(BGP_NODE, &address_family_evpn_cmd);
+    install_element(BGP_NODE, &address_family_linkstate_cmd);
+    install_element(BGP_NODE, &address_family_linkstate_vpn_cmd);
+	install_element(BGP_SRV6_POLICY_NODE, &exit_address_family_cmd);
+    install_element(BGP_LS_NODE, &exit_address_family_cmd);
+    install_element(BGP_LS_VPN_NODE, &exit_address_family_cmd);
 
 #if defined(ENABLE_BGP_VNC)
 	install_element(BGP_NODE, &vnc_vrf_policy_cmd);

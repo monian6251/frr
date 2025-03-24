@@ -158,6 +158,10 @@ struct evpn_addr {
 #define AF_FLOWSPEC (AF_MAX + 2)
 #endif
 
+#if !defined(AF_BGPLS)
+#define AF_BGPLS (16388)
+#endif
+
 struct flowspec_prefix {
 	uint8_t family;
 	uint16_t prefixlen; /* length in bytes */

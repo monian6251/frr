@@ -114,6 +114,9 @@ enum node_type {
 	BGP_IPV6_NODE,		 /* BGP IPv6 address family */
 	BGP_IPV6M_NODE,		 /* BGP IPv6 multicast address family. */
 	BGP_IPV6L_NODE,		 /* BGP IPv6 labeled unicast address family. */
+	BGP_SRV6_POLICY_NODE,		 /* BGP IPv6 sr policy address family. */
+    BGP_LS_NODE,         /* BGP link state address family. */    
+    BGP_LS_VPN_NODE,         /* BGP link state VPN address family. */
 	BGP_VRF_POLICY_NODE,     /* BGP VRF policy */
 	BGP_VNC_DEFAULTS_NODE,   /* BGP VNC nve defaults */
 	BGP_VNC_NVE_GROUP_NODE,  /* BGP VNC nve group */

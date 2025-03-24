@@ -75,6 +75,7 @@
 #include "bgpd/bgp_flowspec.h"
 #include "bgpd/bgp_flowspec_util.h"
 #include "bgpd/bgp_pbr.h"
+#include "bgpd/bgp_ls_vty.h"
 
 #include "bgpd/bgp_route_clippy.c"
 
@@ -15745,6 +15746,132 @@ DEFPY(show_ip_bgp_vrf_afi_safi_routes_detailed,
 			show_flags, RPKI_NOT_BEING_USED);
 }
 
+DEFUN (show_ip_bgp_ls_neighbor,
+	show_ip_bgp_ls_neighbor_cmd,
+	"show [ip] bgp [<view|vrf> VIEWVRFNAME]"
+	"neighbors <A.B.C.D|X:X::X:X|WORD> <link-state [<node|link|ipv4-prefix|ipv6-prefix|te-policy>]> [json]",
+	SHOW_STR
+	IP_STR
+	BGP_STR
+	BGP_INSTANCE_HELP_STR
+	"Detailed information on TCP and BGP neighbor connections\n"
+	"Neighbor to display information about\n"
+	"Neighbor to display information about\n"
+	"Neighbor on BGP configured interface\n"
+	"Display link state nlri attribute learned from neighbor\n"
+	"Node attribute\n"
+	"Link attribute\n"
+	"IPv4 prefix attribute\n"
+	"IPv6 prefix attribute\n"
+	"TE Policy attribute\n"
+	JSON_STR)
+{
+char *peerstr = NULL;
+struct bgp *bgp = NULL;
+char *vrf = NULL;
+afi_t afi = AFI_BGPLS;
+safi_t safi = SAFI_BGP_LS;
+struct peer *peer;
+int idx = 0;
+bool uj = use_json(argc, argv);
+
+if (uj)
+   argc--;
+
+if (argv_find(argv, argc, "ip", &idx))
+   afi = AFI_IP;
+if (argv_find(argv, argc, "view", &idx)
+   || argv_find(argv, argc, "vrf", &idx))
+   vrf = argv[++idx]->arg;
+
+bgp = bgp_lookup_by_name(vrf);
+if (bgp == NULL) {
+   vty_out(vty, "Can't find BGP instance %s\n", vrf);
+   return CMD_WARNING;
+}
+
+/* neighbors <A.B.C.D|X:X::X:X|WORD> */
+if (!argv_find(argv, argc, "neighbors", &idx))
+	return CMD_WARNING;
+
+peerstr = argv[++idx]->arg;  
+peer = peer_lookup_in_view(vty, bgp, peerstr, uj);
+if (!peer)
+   return CMD_WARNING;   
+
+if (argv_find(argv, argc, "link-state", &idx))
+{
+   if (argv_find(argv, argc, "node", &idx))
+	   return bgp_ls_show_neighbor(vty, peer, afi, safi, bgp_show_type_ls_neighbor, BGP_LS_VTY_NLRI_NODE, uj);
+   else if (argv_find(argv, argc, "link", &idx))
+	   return bgp_ls_show_neighbor(vty, peer, afi, safi, bgp_show_type_ls_neighbor, BGP_LS_VTY_NLRI_LINK, uj);
+   else if (argv_find(argv, argc, "ipv4-prefix", &idx))
+	   return bgp_ls_show_neighbor(vty, peer, afi, safi, bgp_show_type_ls_neighbor, BGP_LS_VTY_NLRI_IP4_PREFIX, uj);
+   else if (argv_find(argv, argc, "ipv6-prefix", &idx))
+	   return bgp_ls_show_neighbor(vty, peer, afi, safi, bgp_show_type_ls_neighbor, BGP_LS_VTY_NLRI_IP6_PREFIX, uj);
+   else if (argv_find(argv, argc, "te-policy", &idx))
+	   return bgp_ls_show_neighbor(vty, peer, afi, safi, bgp_show_type_ls_neighbor, BGP_LS_VTY_NLRI_TE_POLICY, uj);
+   else     
+	   return bgp_ls_show_neighbor(vty, peer, afi, safi, bgp_show_type_ls_neighbor, BGP_LS_VTY_ALL, uj);
+}
+
+return CMD_WARNING;
+}
+
+/*DEFUN (show_ip_bgp_ls_local,
+	show_ip_bgp_ls_local_cmd,
+	"show [ip] bgp [<view|vrf> VIEWVRFNAME]"
+	"<link-state [<node|link|ipv4-prefix|ipv6-prefix>]> [json]",
+	SHOW_STR
+	IP_STR
+	BGP_STR
+	BGP_INSTANCE_HELP_STR
+	"Display link state nlri attribute\n"
+	"Node attribute\n"
+	"Link attribute\n"
+	"IPv4 prefix attribute\n"
+	"IPv6 prefix attribute\n"
+	JSON_STR)
+{
+afi_t afi = AFI_BGPLS;
+safi_t safi = SAFI_UNICAST;
+struct bgp *bgp = NULL;
+char *vrf = NULL;
+int idx = 0;
+bool uj = use_json(argc, argv);
+
+if (uj)
+   argc--;
+
+if (argv_find(argv, argc, "ip", &idx))
+   afi = AFI_IP;
+if (argv_find(argv, argc, "view", &idx)
+   || argv_find(argv, argc, "vrf", &idx))
+   vrf = argv[++idx]->arg;
+
+bgp = bgp_lookup_by_name(vrf);
+if (bgp == NULL) {
+   vty_out(vty, "Can't find BGP instance %s\n", vrf);
+   return CMD_WARNING;
+}
+
+if (argv_find(argv, argc, "link-state", &idx))
+{
+   if (argv_find(argv, argc, "node", &idx))
+	   return bgp_ls_show_local(vty, bgp, afi, safi, bgp_show_type_ls_local, BGP_LS_VTY_NLRI_NODE, uj);
+   else if (argv_find(argv, argc, "link", &idx))
+	   return bgp_ls_show_local(vty, bgp, afi, safi, bgp_show_type_ls_local, BGP_LS_VTY_NLRI_LINK, uj);
+   else if (argv_find(argv, argc, "ipv4-prefix", &idx))
+	   return bgp_ls_show_local(vty, bgp, afi, safi, bgp_show_type_ls_local, BGP_LS_VTY_NLRI_IP4_PREFIX, uj);
+   else if (argv_find(argv, argc, "ipv6-prefix", &idx))
+	   return bgp_ls_show_local(vty, bgp, afi, safi, bgp_show_type_ls_local, BGP_LS_VTY_NLRI_IP6_PREFIX, uj);
+   else     
+	   return bgp_ls_show_local(vty, bgp, afi, safi, bgp_show_type_ls_local, BGP_LS_VTY_ALL, uj);
+}
+
+return CMD_WARNING;
+}*/
+
 DEFUN (show_ip_bgp_neighbor_routes,
        show_ip_bgp_neighbor_routes_cmd,
        "show [ip] bgp [<view|vrf> VIEWVRFNAME] ["BGP_AFI_CMD_STR" ["BGP_SAFI_WITH_LABEL_CMD_STR"]] neighbors <A.B.C.D|X:X::X:X|WORD> <flap-statistics|dampened-routes|routes> [json]",
@@ -16893,6 +17020,9 @@ void bgp_route_init(void)
 	/* show bgp vrf <afi> <safi> detailed */
 	install_element(VIEW_NODE,
 			&show_ip_bgp_vrf_afi_safi_routes_detailed_cmd);
+
+	install_element(VIEW_NODE, &show_ip_bgp_ls_neighbor_cmd);
+	//install_element(VIEW_NODE, &show_ip_bgp_ls_local_cmd);
 
 	install_element(VIEW_NODE, &show_bgp_listeners_cmd);
 	install_element(VIEW_NODE, &show_bgp_peerhash_cmd);

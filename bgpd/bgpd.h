@@ -91,6 +91,8 @@ enum bgp_af_index {
 	BGP_AF_IPV6_LBL_UNICAST,
 	BGP_AF_IPV4_FLOWSPEC,
 	BGP_AF_IPV6_FLOWSPEC,
+	BGP_AF_IPV6_SR_POLICY,
+	BGP_AF_LS,
 	BGP_AF_MAX
 };
 
@@ -807,6 +809,13 @@ struct bgp {
 #define BGP_VRF_L3VNI_PREFIX_ROUTES_ONLY    (1 << 6)
 /* per-VRF toVPN SID */
 #define BGP_VRF_TOVPN_SID_AUTO              (1 << 7)
+	/* bgp ls peer num*/
+	uint16_t bgpls_peers_num;
+	/* sr policy peer num*/
+	uint16_t srv6_peers_num;
+    uint32_t lsdb_flags;
+    /* isis/ospf store link-state database */
+    struct bgp_ls_db *lsdb_loc;
 
 	/* unique ID for auto derivation of RD for this vrf */
 	uint16_t vrf_rd_id;
@@ -1933,6 +1942,10 @@ struct peer {
 	char *hostname;
 	char *domainname;
 
+	/* receive packet store link-state database */
+	struct bgp_ls_db *lsdb_nei;
+	uint32_t lsdb_nei_flags;	
+
 	/* Extended Message Support */
 	uint16_t max_packet_size;
 
@@ -2068,6 +2081,7 @@ struct bgp_nlri {
 #define BGP_ATTR_ENCAP                          23
 #define BGP_ATTR_IPV6_EXT_COMMUNITIES           25
 #define BGP_ATTR_AIGP                           26
+#define BGP_ATTR_LINK_STATE_PATH                29
 #define BGP_ATTR_LARGE_COMMUNITIES              32
 #define BGP_ATTR_OTC                            35
 #define BGP_ATTR_PREFIX_SID                     40
@@ -2684,6 +2698,8 @@ static inline int afindex(afi_t afi, safi_t safi)
 			return BGP_AF_IPV6_ENCAP;
 		case SAFI_FLOWSPEC:
 			return BGP_AF_IPV6_FLOWSPEC;
+		case SAFI_SR_POLICY:
+			return BGP_AF_IPV6_SR_POLICY;
 		case SAFI_EVPN:
 		case SAFI_UNSPEC:
 		case SAFI_MAX:
@@ -2705,6 +2721,15 @@ static inline int afindex(afi_t afi, safi_t safi)
 			return BGP_AF_MAX;
 		}
 		break;
+	case AFI_BGPLS:
+        switch (safi) {
+        case SAFI_BGP_LS:
+        case SAFI_BGP_LS_VPN:
+            return BGP_AF_LS;
+        default:
+            return BGP_AF_MAX;
+        }
+        break;
 	case AFI_UNSPEC:
 	case AFI_MAX:
 		return BGP_AF_MAX;
@@ -2730,7 +2755,10 @@ static inline int peer_afi_active_nego(const struct peer *peer, afi_t afi)
 	    || peer->afc_nego[afi][SAFI_MPLS_VPN]
 	    || peer->afc_nego[afi][SAFI_ENCAP]
 	    || peer->afc_nego[afi][SAFI_FLOWSPEC]
-	    || peer->afc_nego[afi][SAFI_EVPN])
+	    || peer->afc_nego[afi][SAFI_EVPN]
+		|| peer->afc_nego[afi][SAFI_SR_POLICY]
+		|| peer->afc_nego[afi][SAFI_BGP_LS]
+		|| peer->afc_nego[afi][SAFI_BGP_LS_VPN])
 		return 1;
 	return 0;
 }
@@ -2750,7 +2778,10 @@ static inline int peer_group_af_configured(struct peer_group *group)
 	    || peer->afc[AFI_IP6][SAFI_MPLS_VPN]
 	    || peer->afc[AFI_IP6][SAFI_ENCAP]
 	    || peer->afc[AFI_IP6][SAFI_FLOWSPEC]
-	    || peer->afc[AFI_L2VPN][SAFI_EVPN])
+		|| peer->afc[AFI_IP6][SAFI_SR_POLICY]
+	    || peer->afc[AFI_L2VPN][SAFI_EVPN]
+	    || peer->afc[AFI_BGPLS][SAFI_BGP_LS]
+	    || peer->afc[AFI_BGPLS][SAFI_BGP_LS_VPN])
 		return 1;
 	return 0;
 }
