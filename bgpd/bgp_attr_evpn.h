@@ -27,6 +27,15 @@ struct bgp_route_evpn {
 	enum overlay_index_type type;
 	esi_t eth_s_id;
 	struct ipaddr gw_ip;
+
+	/* SRv6 related information */
+	struct in6_addr sid;        /* SRv6 SID */
+	uint8_t loc_block_len;      /* Locator Block length */
+	uint8_t loc_node_len;       /* Locator Node length */ 
+	uint8_t func_len;           /* Function length */
+	uint8_t arg_len;            /* Argument length */
+	uint8_t transposition_len;  /* Transposition length */
+	uint8_t transposition_offset; /* Transposition offset */
 };
 
 extern bool str2esi(const char *str, esi_t *id);

@@ -5088,12 +5088,14 @@ static int process_type5_route(struct peer *peer, afi_t afi, safi_t safi,
 	mpls_label_t label; /* holds the VNI as in the packet */
 	bool is_valid_update = true;
 
-	/* Type-5 route should be 34 or 58 bytes:
+	/* Type-5 route should be 34 or 58 bytes without SRv6 info:
 	 * RD (8), ESI (10), Eth Tag (4), IP len (1), IP (4 or 16),
 	 * GW (4 or 16) and VNI (3).
-	 * Note that the IP and GW should both be IPv4 or both IPv6.
+	 * With SRv6 info, additional fields:
+	 * SID (16), Block len (1), Node len (1), Func len (1), 
+	 * Arg len (1), Trans len (1), Trans offset (1)
 	 */
-	if (psize != 34 && psize != 58) {
+	if (psize != 34 && psize != 58 && psize != 55 && psize != 79) {
 		flog_err(EC_BGP_EVPN_ROUTE_INVALID,
 			 "%u:%s - Rx EVPN Type-5 NLRI with invalid length %d",
 			 peer->bgp->vrf_id, peer->host, psize);
@@ -5139,7 +5141,7 @@ static int process_type5_route(struct peer *peer, afi_t afi, safi_t safi,
 	/* Since the address and GW are from the same family, this just becomes
 	 * a simple check on the total size.
 	 */
-	if (psize == 34) {
+	if (psize == 34 || psize == 55) {
 		SET_IPADDR_V4(&p.prefix.prefix_addr.ip);
 		memcpy(&p.prefix.prefix_addr.ip.ipaddr_v4, pfx, 4);
 		pfx += 4;
@@ -5159,12 +5161,32 @@ static int process_type5_route(struct peer *peer, afi_t afi, safi_t safi,
 	/* Get the VNI (in MPLS label field). Stored as bytes here. */
 	memset(&label, 0, sizeof(label));
 	memcpy(&label, pfx, BGP_LABEL_BYTES);
+	pfx += BGP_LABEL_BYTES;
 
-	/*
-	 * If in future, we are required to access additional fields,
-	 * we MUST increment pfx by BGP_LABEL_BYTES in before reading the next
-	 * field
-	 */
+	/* Check if we have SRv6 information */
+	if (psize == 55 || psize == 79) {
+		/* Get SRv6 SID */
+		memcpy(&evpn->sid, pfx, sizeof(struct in6_addr));
+		pfx += sizeof(struct in6_addr);
+
+		/* Get SRv6 structure lengths */
+		evpn->loc_block_len = *pfx++;
+		evpn->loc_node_len = *pfx++;
+		evpn->func_len = *pfx++;
+		evpn->arg_len = *pfx++;
+		evpn->transposition_len = *pfx++;
+		evpn->transposition_offset = *pfx++;
+
+		/* Validate SRv6 structure lengths */
+		if ((evpn->loc_block_len + evpn->loc_node_len + evpn->func_len + 
+		     evpn->arg_len) > 128) {
+			flog_err(EC_BGP_EVPN_ROUTE_INVALID,
+				"%u:%s - Rx EVPN Type-5 NLRI with invalid SRv6 lengths",
+				peer->bgp->vrf_id, peer->host);
+			evpn_overlay_free(evpn);
+			return -1;
+		}
+	}
 
 	/*
 	 * An update containing a non-zero gateway IP and a non-zero ESI
@@ -5242,8 +5264,23 @@ static void evpn_mpattr_encode_type5(struct stream *s, const struct prefix *p,
 		len = 8; /* IP and GWIP are both ipv4 */
 	else
 		len = 32; /* IP and GWIP are both ipv6 */
-	/* Prefix contains RD, ESI, EthTag, IP length, IP, GWIP and VNI */
-	stream_putc(s, 8 + 10 + 4 + 1 + len + 3);
+
+	/* Compute total length, including optional SRv6 info
+	 * Base length breakdown:
+	 * - 8 bytes  : Route Distinguisher (RD)
+	 * - 10 bytes : Ethernet Segment Identifier (ESI)
+	 * - 4 bytes  : Ethernet Tag ID (EthTag)
+	 * - 1 byte   : IP prefix length field
+	 * - len bytes: IP + Gateway IP (8 bytes for IPv4, 32 bytes for IPv6)
+	 * - 3 bytes  : VNI/label
+	 */
+	int total_len = 8 + 10 + 4 + 1 + len + 3;
+	if (bre && !IN6_IS_ADDR_UNSPECIFIED(&bre->sid)) {
+		total_len += sizeof(struct in6_addr) + 6;  /* SRv6 SID + lengths */
+	}
+
+	/* Prefix contains RD, ESI, EthTag, IP length, IP, GWIP, VNI and optional SRv6 info */
+	stream_putc(s, total_len);
 	stream_put(s, prd->val, 8);
 	if (attr && bre && bre->type == OVERLAY_INDEX_ESI)
 		stream_put(s, &attr->esi, sizeof(esi_t));
@@ -5271,6 +5308,20 @@ static void evpn_mpattr_encode_type5(struct stream *s, const struct prefix *p,
 		stream_put(s, label, 3);
 	else
 		stream_put3(s, 0);
+
+	/* Add SRv6 information if present */
+	if (bre && !IN6_IS_ADDR_UNSPECIFIED(&bre->sid)) {
+		/* Put SRv6 SID */
+		stream_put(s, &bre->sid, sizeof(struct in6_addr));
+
+		/* Put SRv6 structure lengths */
+		stream_putc(s, bre->loc_block_len);
+		stream_putc(s, bre->loc_node_len);
+		stream_putc(s, bre->func_len);
+		stream_putc(s, bre->arg_len);
+		stream_putc(s, bre->transposition_len);
+		stream_putc(s, bre->transposition_offset);
+	}
 }
 
 /*
